@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Audio Boardgame App</title>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <style>
+        :root {
+            --primary-color: #ff7b00; /* Laranja vibrante */
+            --secondary-color: #333333; /* Cinza escuro para botões secundários */
+            --bg-color: #121212; /* Fundo quase preto */
+            --text-color: #ffffff;
+            --card-bg: #1e1e1e;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            height: 100vh; /* Ocupa 100% da altura da tela */
+            margin: 0;
+            padding: 20px;
+            text-align: center;
+        }
+
+        /* Título do App */
+        h1 {
+            margin: 20px 0;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #ccc;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Container principal que flexiona para ocupar o espaço */
+        .main-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center; /* Centraliza verticalmente */
+            align-items: center;
+            width: 100%;
+            max-width: 500px; /* Limite para tablets */
+            margin: 0 auto;
+            background: var(--card-bg);
+            border-radius: 25px; /* Bordas bem arredondadas */
+            padding: 30px 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        /* Área do Scanner */
+        #reader {
+            width: 100%;
+            border-radius: 20px;
+            overflow: hidden;
+            margin-bottom: 25px;
+            display: none;
+            border: 3px solid var(--primary-color);
+        }
+
+        /* Status do texto grande */
+        #status-text {
+            margin-bottom: 30px;
+            font-size: 1.3rem;
+            font-weight: 500;
+            color: #eee;
+            min-height: 30px;
+        }
+
+        /* --- ESTILOS DE BOTÕES MOBILE --- */
+        button {
+            border: none;
+            cursor: pointer;
+            font-family: inherit;
+            transition: transform 0.1s, background-color 0.2s;
+            outline: none;
+        }
+        button:active { transform: scale(0.96); }
+
+        /* Botão Retangular Grande (Padrão) */
+        .btn-mobile-large {
+            width: 100%;
+            padding: 22px; /* Área de toque gigante */
+            border-radius: 16px;
+            font-size: 1.3rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            margin-bottom: 15px;
+        }
+
+        .btn-primary { background-color: var(--primary-color); color: white; }
+        .btn-secondary { background-color: var(--secondary-color); color: #ccc; }
+
+        /* Botão Circular de Play/Pause */
+        .play-control-area {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 40px;
+        }
+
+        .btn-play-circle {
+            width: 110px; /* Tamanho grande e fixo */
+            height: 110px;
+            border-radius: 50%; /* Círculo perfeito */
+            font-size: 3.5rem;
+            padding: 0;
+            background-color: var(--primary-color);
+            color: white;
+            box-shadow: 0 8px 20px rgba(255, 123, 0, 0.4);
+            display: flex; align-items: center; justify-content: center;
+        }
+        
+        /* Área de controle (Play/Pause) inicialmente oculta */
+        #audio-controls { width: 100%; display: none; }
+        
+        /* Esconde o player do YouTube visualmente */
+        #youtube-player-wrapper {
+            position: absolute; top: -9999px; left: -9999px; visibility: hidden; 
+        }
+    </style>
+</head>
+<body>
+
+    <div class="main-container">
+        
+        <div id="status-text">Toque abaixo para começar</div>
+
+        <div id="reader"></div>
+
+        <button id="btn-scan" class="btn-mobile-large btn-primary" onclick="startScan()">
+            <span>📷</span> LER QR CODE
+        </button>
+
+        <div id="audio-controls">
+            
+            <div class="play-control-area">
+                <button id="playBtn" class="btn-play-circle" onclick="togglePlay()">▶️</button>
+            </div>
+            
+            <button class="btn-mobile-large btn-secondary" onclick="startScan()">
+                <span>🔄</span> Ler Outro Código
+            </button>
+        </div>
+
+    </div>
+
+    <div id="youtube-player-wrapper">
+        <div id="player"></div>
+    </div>
+
+    <script>
+        // --- Configuração do YouTube (Inalterada) ---
+        var player;
+        var isPlayerReady = false;
+        var tag = document.createElement('script');
+        tag.src = "https://www.youtube.com/iframe_api";
+        var firstScriptTag = document.getElementsByTagName('script')[0];
+        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+        function onYouTubeIframeAPIReady() {
+            player = new YT.Player('player', {
+                height: '200', width: '200', videoId: '',
+                events: { 'onReady': onPlayerReady, 'onStateChange': onPlayerStateChange }
+            });
+        }
+
+        function onPlayerReady(event) {
+            isPlayerReady = true;
+            console.log("Player Pronto");
+        }
+
+        function onPlayerStateChange(event) {
+            const statusText = document.getElementById('status-text');
+            const playBtn = document.getElementById('playBtn');
+
+            if (event.data == YT.PlayerState.PLAYING) {
+                statusText.innerText = "🔊 Reproduzindo áudio...";
+                playBtn.innerText = "⏸️"; // Ícone de Pause
+                playBtn.style.backgroundColor = "#ff7b00"; // Mantém cor
+            } else if (event.data == YT.PlayerState.PAUSED) {
+                statusText.innerText = "Audio pausado.";
+                playBtn.innerText = "▶️"; // Ícone de Play
+                playBtn.style.backgroundColor = "#555"; // Cor de "espera"
+            } else if (event.data == YT.PlayerState.ENDED) {
+                statusText.innerText = "Fim do áudio.";
+                playBtn.innerText = "🔄"; // Ícone de Replay
+                playBtn.style.backgroundColor = "#555";
+            }
+        }
+
+        // --- Lógica de Controle (Inalterada) ---
+        function togglePlay() {
+            if (!isPlayerReady) return;
+            var playerState = player.getPlayerState();
+            if (playerState == YT.PlayerState.PLAYING || playerState == YT.PlayerState.BUFFERING) {
+                player.pauseVideo();
+            } else {
+                player.playVideo();
+            }
+        }
+
+        // --- Lógica do QR Code (Com ajuste de UI) ---
+        let html5QrcodeScanner;
+
+        function startScan() {
+            document.getElementById('reader').style.display = "block";
+            document.getElementById('btn-scan').style.display = "none";
+            document.getElementById('audio-controls').style.display = "none";
+            document.getElementById('status-text').innerText = "Aponte a câmera para o QR Code";
+
+            if(isPlayerReady) player.stopVideo();
+
+            // Se já existe scanner, limpa antes de criar outro
+            if (html5QrcodeScanner) { html5QrcodeScanner.clear(); }
+
+            html5QrcodeScanner = new Html5Qrcode("reader");
+            // Usar area de escaneamento menor para focar no centro
+            const config = { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 };
+            
+            html5QrcodeScanner.start({ facingMode: "environment" }, config, onScanSuccess)
+            .catch(err => {
+                alert("Erro: Permita o acesso à câmera e use HTTPS.");
+            });
+        }
+
+        function onScanSuccess(decodedText, decodedResult) {
+            let videoId = extractVideoID(decodedText);
+            if (videoId) {
+                html5QrcodeScanner.stop().then(() => {
+                    document.getElementById('reader').style.display = "none";
+                    document.getElementById('audio-controls').style.display = "block";
+                    document.getElementById('status-text').innerText = "Carregando áudio...";
+                    
+                    if (isPlayerReady) {
+                        // Carrega em baixa qualidade (seu pedido anterior)
+                        player.loadVideoById({
+                            videoId: videoId,
+                            suggestedQuality: 'small'
+                        });
+                    }
+                }).catch(err => console.log(err));
+            } else {
+                alert("QR Code inválido. Use um link do YouTube.");
+            }
+        }
+
+        function extractVideoID(url) {
+            var regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
+            var match = url.match(regExp);
+            return (match && match[7].length == 11) ? match[7] : false;
+        }
+    </script>
+</body>
+</html>
