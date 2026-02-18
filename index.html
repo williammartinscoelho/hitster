@@ -7,54 +7,55 @@
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
         :root {
-            --primary-color: #ff7b00; /* Laranja vibrante */
-            --secondary-color: #333333; /* Cinza escuro para botões secundários */
-            --bg-color: #121212; /* Fundo quase preto */
+            --primary-color: #ff7b00;
+            --active-bg-color: #22BB33; /* A cor verde que você pediu */
+            --default-bg-color: #121212; /* Fundo original escuro */
+            --secondary-color: #333333;
             --text-color: #ffffff;
-            --card-bg: #1e1e1e;
+            --card-bg: rgba(30, 30, 30, 0.9); /* Fundo do card levemente transparente */
         }
 
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-color);
+            background-color: var(--default-bg-color);
             color: var(--text-color);
             display: flex;
             flex-direction: column;
-            height: 100vh; /* Ocupa 100% da altura da tela */
+            height: 100vh;
             margin: 0;
             padding: 20px;
             text-align: center;
+            /* Adiciona uma transição suave para a mudança de cor não ser agressiva */
+            transition: background-color 0.8s ease; 
         }
 
-        /* Título do App */
         h1 {
-            margin: 20px 0;
-            font-size: 1.5rem;
+            margin: 10px 0 20px 0;
+            font-size: 1.2rem;
             font-weight: 600;
-            color: #ccc;
+            color: rgba(255,255,255,0.7);
             text-transform: uppercase;
             letter-spacing: 1px;
         }
 
-        /* Container principal que flexiona para ocupar o espaço */
         .main-container {
             flex: 1;
             display: flex;
             flex-direction: column;
-            justify-content: center; /* Centraliza verticalmente */
+            justify-content: center;
             align-items: center;
             width: 100%;
-            max-width: 500px; /* Limite para tablets */
+            max-width: 500px;
             margin: 0 auto;
             background: var(--card-bg);
-            border-radius: 25px; /* Bordas bem arredondadas */
+            border-radius: 25px;
             padding: 30px 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            backdrop-filter: blur(10px); /* Efeito moderno de vidro */
         }
 
-        /* Área do Scanner */
         #reader {
             width: 100%;
             border-radius: 20px;
@@ -64,31 +65,42 @@
             border: 3px solid var(--primary-color);
         }
 
-        /* Status do texto grande */
         #status-text {
-            margin-bottom: 30px;
-            font-size: 1.3rem;
+            margin-bottom: 20px;
+            font-size: 1.2rem;
             font-weight: 500;
             color: #eee;
             min-height: 30px;
         }
 
-        /* --- ESTILOS DE BOTÕES MOBILE --- */
+        /* --- ESTILOS DO CONTADOR DE TEMPO --- */
+        #time-display {
+            font-size: 1.5rem;
+            font-family: 'Courier New', monospace; /* Fonte monoespaçada para números não pularem */
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #fff;
+            background: rgba(0,0,0,0.3);
+            padding: 5px 15px;
+            border-radius: 10px;
+            display: inline-block;
+        }
+
+        /* --- BOTÕES --- */
         button {
             border: none;
             cursor: pointer;
             font-family: inherit;
-            transition: transform 0.1s, background-color 0.2s;
+            transition: transform 0.1s;
             outline: none;
         }
         button:active { transform: scale(0.96); }
 
-        /* Botão Retangular Grande (Padrão) */
         .btn-mobile-large {
             width: 100%;
-            padding: 22px; /* Área de toque gigante */
+            padding: 20px;
             border-radius: 16px;
-            font-size: 1.3rem;
+            font-size: 1.2rem;
             font-weight: 700;
             display: flex;
             align-items: center;
@@ -101,35 +113,34 @@
         .btn-primary { background-color: var(--primary-color); color: white; }
         .btn-secondary { background-color: var(--secondary-color); color: #ccc; }
 
-        /* Botão Circular de Play/Pause */
         .play-control-area {
             display: flex;
             justify-content: center;
-            margin-bottom: 40px;
+            margin-bottom: 30px;
         }
 
         .btn-play-circle {
-            width: 110px; /* Tamanho grande e fixo */
-            height: 110px;
-            border-radius: 50%; /* Círculo perfeito */
-            font-size: 3.5rem;
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            font-size: 3rem;
             padding: 0;
             background-color: var(--primary-color);
             color: white;
-            box-shadow: 0 8px 20px rgba(255, 123, 0, 0.4);
+            box-shadow: 0 8px 20px rgba(0,0,0, 0.4);
             display: flex; align-items: center; justify-content: center;
         }
         
-        /* Área de controle (Play/Pause) inicialmente oculta */
         #audio-controls { width: 100%; display: none; }
         
-        /* Esconde o player do YouTube visualmente */
         #youtube-player-wrapper {
             position: absolute; top: -9999px; left: -9999px; visibility: hidden; 
         }
     </style>
 </head>
 <body>
+
+    <h1>🎲 Jogo de Tabuleiro 🎲</h1>
 
     <div class="main-container">
         
@@ -143,6 +154,8 @@
 
         <div id="audio-controls">
             
+            <div id="time-display">00:00 / 00:00</div>
+
             <div class="play-control-area">
                 <button id="playBtn" class="btn-play-circle" onclick="togglePlay()">▶️</button>
             </div>
@@ -159,9 +172,10 @@
     </div>
 
     <script>
-        // --- Configuração do YouTube (Inalterada) ---
         var player;
         var isPlayerReady = false;
+        var timeInterval; // Variável para controlar o relógio
+
         var tag = document.createElement('script');
         tag.src = "https://www.youtube.com/iframe_api";
         var firstScriptTag = document.getElementsByTagName('script')[0];
@@ -176,7 +190,6 @@
 
         function onPlayerReady(event) {
             isPlayerReady = true;
-            console.log("Player Pronto");
         }
 
         function onPlayerStateChange(event) {
@@ -184,21 +197,29 @@
             const playBtn = document.getElementById('playBtn');
 
             if (event.data == YT.PlayerState.PLAYING) {
-                statusText.innerText = "🔊 Reproduzindo áudio...";
-                playBtn.innerText = "⏸️"; // Ícone de Pause
-                playBtn.style.backgroundColor = "#ff7b00"; // Mantém cor
+                statusText.innerText = "🔊 Reproduzindo...";
+                playBtn.innerText = "⏸️"; 
+                
+                // MUDANÇA 1: Muda a cor do fundo para Verde
+                document.body.style.backgroundColor = "var(--active-bg-color)";
+
+                // Inicia o contador
+                startTimer();
+                
             } else if (event.data == YT.PlayerState.PAUSED) {
-                statusText.innerText = "Audio pausado.";
-                playBtn.innerText = "▶️"; // Ícone de Play
-                playBtn.style.backgroundColor = "#555"; // Cor de "espera"
+                statusText.innerText = "Pausado.";
+                playBtn.innerText = "▶️";
+                stopTimer(); // Para o contador mas não zera
+
             } else if (event.data == YT.PlayerState.ENDED) {
                 statusText.innerText = "Fim do áudio.";
-                playBtn.innerText = "🔄"; // Ícone de Replay
-                playBtn.style.backgroundColor = "#555";
+                playBtn.innerText = "🔄";
+                stopTimer();
+                // Opcional: Voltar a cor ao normal quando acaba?
+                // Por enquanto mantive verde para indicar que aquele áudio foi o último tocado.
             }
         }
 
-        // --- Lógica de Controle (Inalterada) ---
         function togglePlay() {
             if (!isPlayerReady) return;
             var playerState = player.getPlayerState();
@@ -209,22 +230,59 @@
             }
         }
 
-        // --- Lógica do QR Code (Com ajuste de UI) ---
+        // --- Lógica do Contador de Tempo ---
+        function startTimer() {
+            stopTimer(); // Limpa anterior para garantir
+            timeInterval = setInterval(updateTimeDisplay, 500); // Atualiza a cada meio segundo
+        }
+
+        function stopTimer() {
+            clearInterval(timeInterval);
+        }
+
+        function updateTimeDisplay() {
+            if (!player || !player.getCurrentTime) return;
+
+            var current = player.getCurrentTime();
+            var duration = player.getDuration();
+
+            document.getElementById('time-display').innerText = 
+                formatTime(current) + " / " + formatTime(duration);
+        }
+
+        // Formata segundos em MM:SS
+        function formatTime(time) {
+            if (!time) return "00:00";
+            time = Math.round(time);
+            var minutes = Math.floor(time / 60);
+            var seconds = time - minutes * 60;
+            // Adiciona zero à esquerda se for menor que 10
+            if (seconds < 10) seconds = "0" + seconds;
+            if (minutes < 10) minutes = "0" + minutes;
+            return minutes + ":" + seconds;
+        }
+
+        // --- Lógica do QR Code ---
         let html5QrcodeScanner;
 
         function startScan() {
+            // MUDANÇA 1: Reseta a cor do fundo para Preto ao voltar para ler código
+            document.body.style.backgroundColor = "var(--default-bg-color)";
+            
+            // Reseta o texto do timer
+            document.getElementById('time-display').innerText = "00:00 / 00:00";
+            stopTimer();
+
             document.getElementById('reader').style.display = "block";
             document.getElementById('btn-scan').style.display = "none";
             document.getElementById('audio-controls').style.display = "none";
-            document.getElementById('status-text').innerText = "Aponte a câmera para o QR Code";
+            document.getElementById('status-text').innerText = "Aponte a câmera";
 
             if(isPlayerReady) player.stopVideo();
 
-            // Se já existe scanner, limpa antes de criar outro
             if (html5QrcodeScanner) { html5QrcodeScanner.clear(); }
-
             html5QrcodeScanner = new Html5Qrcode("reader");
-            // Usar area de escaneamento menor para focar no centro
+            
             const config = { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 };
             
             html5QrcodeScanner.start({ facingMode: "environment" }, config, onScanSuccess)
@@ -239,10 +297,9 @@
                 html5QrcodeScanner.stop().then(() => {
                     document.getElementById('reader').style.display = "none";
                     document.getElementById('audio-controls').style.display = "block";
-                    document.getElementById('status-text').innerText = "Carregando áudio...";
+                    document.getElementById('status-text').innerText = "Carregando...";
                     
                     if (isPlayerReady) {
-                        // Carrega em baixa qualidade (seu pedido anterior)
                         player.loadVideoById({
                             videoId: videoId,
                             suggestedQuality: 'small'
@@ -250,7 +307,7 @@
                     }
                 }).catch(err => console.log(err));
             } else {
-                alert("QR Code inválido. Use um link do YouTube.");
+                alert("QR Code inválido.");
             }
         }
 
